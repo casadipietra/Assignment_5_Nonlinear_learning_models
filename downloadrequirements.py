@@ -1,4 +1,3 @@
-# downloadrequirements.py
 
 import subprocess
 import sys
@@ -24,6 +23,5 @@ def install_if_needed(requirements_file="requirements.txt"):
             print(f"🔄 Installation ou rétrogradation de {requirement} (version installée : {installed_version})")
             subprocess.check_call([sys.executable, "-m", "pip", "install", requirement])
 
-# Permet l'appel direct
 if __name__ == "__main__":
     install_if_needed()

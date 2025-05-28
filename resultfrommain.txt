@@ -1,0 +1,30 @@
+Task 1
+
+On the scatter plot of the checkboard dataset we can see clearly that the data is not linearly separable, we can make the hypothesis that the linear kernel isn't going to work.
+As such using the Radial Basis Function would be best suited for this dataset
+
+On the scatter plot for the linear dataset, we can see that the data is clearly linearly separable, we should use the linear kernel
+
+For the Ripley dataset, a polynomial would probably be the best kernel
+
+Task 2
+
+Our maximum F1 average for the RBF kernel on the checkboard is : 0.9761904761904763
+
+Our maximum F1 average for the linear kernel on the linear dataset is : 0.989010989010989
+
+Our maximum F1 average for the polynomial kernel on the Ripley dataset is : 0.72
+
+Task 3
+
+Part 2 Task 1
+
+Using the RBF kernel we get a F1 average of:  0.989175769372423
+
+Using the linear kernel we get:   0.4589938529714945
+
+Using the polynomial kernel we get:   0.8055031018726122
+
+We can see that the polynomial kernel is surpisingly accurate only just less than the RBF
+
+We can say that the rbf kernel is the best suited for this dataset
