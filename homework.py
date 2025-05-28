@@ -102,61 +102,58 @@ def grid_search_polynomial(C_param_list,degree_list,df,fold,return_training_err=
             training_df.loc[degr,c_val]=float(f1_t)
     return validation_df, training_df
 
-def nested_10_fold_cv(C_param_list_cd,gam_list,kern,train_sample,degree_list,inner_fold):
-    rang=[int(len(train_sample)/10)*i for i in range(1,11)]
-    list_=[]
-    #outer loop
-    for i in rang:
-         if i<=(len(train_sample)/10):
-             test=train_sample.iloc[:i] 
-             train=train_sample.iloc[i:]
+def nested_10_fold_cv(C_param_list_cd, gam_list, kern, train_sample, degree_list, inner_fold):
+    fold_size = len(train_sample) // 10
+    list_f1 = []
 
-         if i>(len(train_sample)/10):
-             test=train_sample.iloc[rang[rang.index(i)-1]:i]
-             train_sample1=train_sample.iloc[:i-int(len(train_sample)/10)]
-             train_sample2=train_sample.iloc[i:]
-             train=pd.concat([train_sample1,train_sample2])
-    
-            #inner loop
-         if kern=='rbf':
-             degr=3
-             validation_df,training_df=grid_search_rbf(C_param_list_cd,gam_list,train,inner_fold,return_training_err=False)
-             #retrieve row value for maximum index
-             c_param_cd=validation_df.max()[validation_df.max()==max(validation_df.max())].index[0]
-             gam_param_cd=validation_df.loc[:,c_param_cd][validation_df.loc[:,c_param_cd]==max(validation_df.loc[:,c_param_cd])].index[0]
-         if kern=='poly':
-             gam_param_cd='auto'
-             validation_df,training_df=grid_search_polynomial(C_param_list_cd,degree_list,train,inner_fold,return_training_err=False)
-             c_param_cd=validation_df.max()[validation_df.max()==max(validation_df.max())].index[0]
-             degr=validation_df.loc[:,c_param_cd][validation_df.loc[:,c_param_cd]==max(validation_df.loc[:,c_param_cd])].index[0]
-            
-         if kern=='linear':
-             degr=3
-             gam_param_cd='auto'
-             validation_df,training_df=grid_search_linear(C_param_list_cd,train,inner_fold,return_training_err=False)         
-      
-             c_param_cd=validation_df.max()[validation_df.max()==max(validation_df.max())].index[0]
-         clf=svm.SVC(C=c_param_cd,kernel=kern,gamma=gam_param_cd,degree=degr)
-         clf.fit(train.iloc[:,:-1],np.array(train.iloc[:,-1]).reshape((-1)))
-         y_pred=clf.predict(test.iloc[:,:-1])
-         TP=sum([1 if np.array(test.iloc[:,-1])[i]==y_pred[i]==1 else 0 for i in range(len(y_pred))])
-      
-         FP=sum([1 if (np.array(test.iloc[:,-1])[i]!=1) & (y_pred[i]==1) else 0 for i in range(len(y_pred))])
-         FN=sum([1 if (np.array(test.iloc[:,-1])[i]==1) & (y_pred[i]!=1) else 0 for i in range(len(y_pred))])
-         if TP+FP==0:
-             precision=0
-         else:
-             precision=TP/(TP+FP)
-         recall=TP/(TP+FN)
-         if precision+recall==0:
-                F1=0
-         else:
-    
-                F1=(2*precision*recall)/(precision+recall)
+    for i in range(10):
+        start_idx = i * fold_size
+        end_idx = (i + 1) * fold_size if i != 9 else len(train_sample)  # pour éviter de perdre les dernières lignes
 
-         list_.append(F1)
-    return (sum(list_)/len(list_))
-         
+        test = train_sample.iloc[start_idx:end_idx]
+        train = pd.concat([train_sample.iloc[:start_idx], train_sample.iloc[end_idx:]])
+
+        # Grid search selon le kernel
+        if kern == 'rbf':
+            degr = 3
+            validation_df, _ = grid_search_rbf(C_param_list_cd, gam_list, train, inner_fold, return_training_err=False)
+            c_param_cd = validation_df.max()[validation_df.max() == validation_df.max().max()].index[0]
+            gam_param_cd = validation_df[c_param_cd][validation_df[c_param_cd] == validation_df[c_param_cd].max()].index[0]
+
+        elif kern == 'poly':
+            gam_param_cd = 'auto'
+            validation_df, _ = grid_search_polynomial(C_param_list_cd, degree_list, train, inner_fold, return_training_err=False)
+            c_param_cd = validation_df.max()[validation_df.max() == validation_df.max().max()].index[0]
+            degr = validation_df[c_param_cd][validation_df[c_param_cd] == validation_df[c_param_cd].max()].index[0]
+
+        elif kern == 'linear':
+            degr = 3
+            gam_param_cd = 'auto'
+            validation_df, _ = grid_search_linear(C_param_list_cd, train, inner_fold, return_training_err=False)
+            c_param_cd = validation_df.max()[validation_df.max() == validation_df.max().max()].index[0]
+
+        else:
+            raise ValueError(f"Unsupported kernel: {kern}")
+
+        # Entraînement
+        clf = svm.SVC(C=c_param_cd, kernel=kern, gamma=gam_param_cd, degree=degr)
+        clf.fit(train.iloc[:, :-1], train.iloc[:, -1])
+
+        # Prédictions
+        y_true = test.iloc[:, -1].to_numpy()
+        y_pred = clf.predict(test.iloc[:, :-1])
+
+        TP = np.sum((y_true == 1) & (y_pred == 1))
+        FP = np.sum((y_true != 1) & (y_pred == 1))
+        FN = np.sum((y_true == 1) & (y_pred != 1))
+
+        precision = TP / (TP + FP) if (TP + FP) > 0 else 0
+        recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+        f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+        list_f1.append(f1)
+
+    return np.mean(list_f1)
 
 if __name__ == '__main__':
     split_sample()
